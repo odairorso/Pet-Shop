@@ -13,6 +13,7 @@ const Login = () => {
   const navigate = useNavigate();
   const { signIn, signUp, signInWithGoogle, loading } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -73,7 +74,62 @@ const Login = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Botão para alternar entre Login e Cadastro */}
+          <div className="text-center mb-4">
+            <button
+              type="button"
+              onClick={() => setIsSignUp(!isSignUp)}
+              style={{
+                width: '100%',
+                minHeight: '55px',
+                backgroundColor: '#3B82F6',
+                color: 'white',
+                border: '2px solid #3B82F6',
+                borderRadius: '10px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                padding: '12px 20px',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 8px rgba(59, 130, 246, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = '#2563EB';
+                e.currentTarget.style.borderColor = '#2563EB';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = '#3B82F6';
+                e.currentTarget.style.borderColor = '#3B82F6';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.2)';
+              }}
+            >
+              {isSignUp ? "Já tem uma conta? Faça login" : "🆕 Não tem conta? CADASTRE-SE AQUI"}
+            </button>
+          </div>
+
+          <Separator />
+
           <form onSubmit={handleEmailAuth} className="space-y-4">
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome Completo</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Seu nome completo"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -109,46 +165,49 @@ const Login = () => {
                 />
               </div>
             )}
-            <Button 
+            <button
               type="submit"
-              className="w-full bg-pet-orange hover:bg-pet-orange/90"
               disabled={loading}
+              style={{
+                width: '100%',
+                minHeight: '50px',
+                backgroundColor: '#10B981',
+                color: 'white',
+                border: '2px solid #10B981',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                padding: '12px 20px',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.2)',
+                opacity: loading ? 0.7 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              onMouseOver={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.backgroundColor = '#059669';
+                  e.currentTarget.style.borderColor = '#059669';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+                }
+              }}
+              onMouseOut={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.backgroundColor = '#10B981';
+                  e.currentTarget.style.borderColor = '#10B981';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.2)';
+                }
+              }}
             >
               {loading ? "Carregando..." : (isSignUp ? "Criar Conta" : "Entrar")}
-            </Button>
+            </button>
           </form>
 
-          <div className="text-center">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="w-full text-pet-blue border-pet-blue hover:bg-pet-blue hover:text-white"
-            >
-              {isSignUp ? "Já tem uma conta? Faça login" : "🆕 Não tem conta? CADASTRE-SE AQUI"}
-            </Button>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-2">
-            {/* Temporariamente desabilitado - habilitar Google OAuth no Supabase primeiro */}
-            {/* <Button 
-              onClick={handleGoogleLogin}
-              variant="outline"
-              className="w-full"
-              disabled={loading}
-            >
-              Entrar com Google
-            </Button> */}
-            <Button 
-              onClick={handleGuestLogin}
-              variant="outline" 
-              className="w-full"
-            >
-              Continuar como Convidado
-            </Button>
-          </div>
+          {/* Botão de convidado removido a pedido do usuário */}
         </CardContent>
       </Card>
       
