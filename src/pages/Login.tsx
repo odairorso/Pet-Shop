@@ -132,14 +132,15 @@ const Login = () => {
           <Separator />
 
           <div className="space-y-2">
-            <Button 
+            {/* Temporariamente desabilitado - habilitar Google OAuth no Supabase primeiro */}
+            {/* <Button 
               onClick={handleGoogleLogin}
               variant="outline"
               className="w-full"
               disabled={loading}
             >
               Entrar com Google
-            </Button>
+            </Button> */}
             <Button 
               onClick={handleGuestLogin}
               variant="outline" 
