@@ -1,5 +1,7 @@
 # Welcome to your Lovable project
 
+Este é um teste de alteração para o deploy da Vercel.
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/d21c107d-397c-4146-a134-45244a070d4c
