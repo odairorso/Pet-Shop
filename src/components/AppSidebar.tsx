@@ -51,15 +51,15 @@ export function AppSidebar() {
   const getNavCls = ({ isActive }: { isActive: boolean }, url: string) => {
     if (isActive) {
       // Specific gradient colors for each active section using design system colors
-      if (url.includes('animais')) return "bg-gradient-to-r from-orange-vivid to-green-vivid text-white font-medium shadow-glow";
-      if (url.includes('clientes')) return "bg-gradient-to-r from-blue-vivid to-purple-vivid text-white font-medium shadow-glow";
-      if (url.includes('funcionarios')) return "bg-gradient-to-r from-purple-vivid to-blue-vivid text-white font-medium shadow-glow";
-      if (url.includes('produtos')) return "bg-gradient-to-r from-orange-vivid to-red-vivid text-white font-medium shadow-glow";
-      if (url.includes('agendamentos')) return "bg-gradient-to-r from-teal-vivid to-blue-vivid text-white font-medium shadow-glow";
-      if (url.includes('vendas')) return "bg-gradient-to-r from-green-vivid to-teal-vivid text-white font-medium shadow-glow";
-      if (url.includes('financeiro')) return "bg-gradient-to-r from-red-vivid to-orange-vivid text-white font-medium shadow-glow";
-      if (url.includes('relatorios')) return "bg-gradient-to-r from-purple-vivid to-teal-vivid text-white font-medium shadow-glow";
-      if (url.includes('configuracoes')) return "bg-gradient-to-r from-muted to-accent text-white font-medium shadow-glow";
+      if (currentPath.includes('animais')) return "bg-gradient-to-r from-orange-vivid to-green-vivid text-white font-medium shadow-glow";
+      if (currentPath.includes('clientes')) return "bg-gradient-to-r from-blue-vivid to-purple-vivid text-white font-medium shadow-glow";
+      if (currentPath.includes('funcionarios')) return "bg-gradient-to-r from-purple-vivid to-blue-vivid text-white font-medium shadow-glow";
+      if (currentPath.includes('produtos')) return "bg-gradient-to-r from-orange-vivid to-red-vivid text-white font-medium shadow-glow";
+      if (currentPath.includes('agendamentos')) return "bg-gradient-to-r from-teal-vivid to-blue-vivid text-white font-medium shadow-glow";
+      if (currentPath.includes('vendas')) return "bg-gradient-to-r from-green-vivid to-teal-vivid text-white font-medium shadow-glow";
+      if (currentPath.includes('financeiro')) return "bg-gradient-to-r from-red-vivid to-orange-vivid text-white font-medium shadow-glow";
+      if (currentPath.includes('relatorios')) return "bg-gradient-to-r from-purple-vivid to-teal-vivid text-white font-medium shadow-glow";
+      if (currentPath.includes('configuracoes')) return "bg-gradient-to-r from-muted to-accent text-white font-medium shadow-glow";
       return "bg-gradient-to-r from-blue-vivid to-purple-vivid text-white font-medium shadow-glow"; // dashboard default
     }
     return "hover:bg-sidebar-accent/50 text-sidebar-foreground transition-all duration-200";

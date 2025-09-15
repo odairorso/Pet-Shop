@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -10,30 +10,32 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Heart, Search, Filter, Plus, Users, Calendar, Weight, Stethoscope } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+
+interface Cliente {
+  id: number;
+  nome: string;
+}
+
+interface Animal {
+  id: number;
+  nome: string;
+  especie: string;
+  raca: string;
+  idade: string;
+  peso: string;
+  cliente_id: number;
+  cliente?: Cliente;
+  created_at?: string;
+  updated_at?: string;
+}
 
 const Animais = () => {
-  const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  const mockClientes = [
-    { id: 1, nome: "Maria Silva" },
-    { id: 2, nome: "João Santos" },
-  ];
-
-  const mockAnimais = [
-    {
-      id: 1,
-      nome: "Rex",
-      especie: "Cachorro",
-      raca: "Golden Retriever",
-      idade: "3 anos",
-      peso: "25 kg",
-      cliente: "Maria Silva",
-      ultimaConsulta: "2024-01-15"
-    },
-  ];
-
-  const [animais, setAnimais] = useState(mockAnimais);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [animais, setAnimais] = useState<Animal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   const formSchema = z.object({
     nome: z.string().min(2, "Informe o nome do animal"),
@@ -45,6 +47,57 @@ const Animais = () => {
   });
 
   type FormValues = z.infer<typeof formSchema>;
+
+  // Carregar clientes do Supabase
+  const carregarClientes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('id, nome')
+        .order('nome');
+
+      if (error) throw error;
+      setClientes(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar clientes:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os clientes.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Carregar animais do Supabase
+  const carregarAnimais = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('animais')
+        .select(`
+          *,
+          cliente:clientes(id, nome)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAnimais(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar animais:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os animais.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Carregar dados ao montar o componente
+  useEffect(() => {
+    carregarClientes();
+    carregarAnimais();
+  }, []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -62,27 +115,47 @@ const Animais = () => {
     setIsDialogOpen(true);
   };
 
-  const onSubmit = (values: FormValues) => {
-    const cliente = mockClientes.find(c => c.id.toString() === values.clienteId);
-    const novoAnimal = {
-      id: Date.now(),
-      nome: values.nome,
-      especie: values.especie,
-      raca: values.raca,
-      idade: values.idade,
-      peso: values.peso,
-      cliente: cliente?.nome || "",
-      ultimaConsulta: new Date().toISOString().slice(0, 10),
-    };
+  const onSubmit = async (values: FormValues) => {
+    try {
+      const { data, error } = await supabase
+        .from('animais')
+        .insert([
+          {
+            nome: values.nome,
+            especie: values.especie,
+            raca: values.raca,
+            idade: values.idade,
+            peso: values.peso,
+            cliente_id: parseInt(values.clienteId),
+          }
+        ])
+        .select(`
+          *,
+          cliente:clientes(id, nome)
+        `);
 
-    setAnimais((prev) => [novoAnimal, ...prev]);
-    setIsDialogOpen(false);
-    form.reset();
+      if (error) throw error;
 
-    toast({
-      title: "Animal cadastrado",
-      description: `${values.nome} foi adicionado com sucesso.`,
-    });
+      // Atualizar a lista de animais
+      if (data && data.length > 0) {
+        setAnimais([data[0], ...animais]);
+      }
+
+      setIsDialogOpen(false);
+      form.reset();
+      
+      toast({
+        title: "Animal cadastrado!",
+        description: `${values.nome} foi cadastrado com sucesso.`,
+      });
+    } catch (error) {
+      console.error('Erro ao cadastrar animal:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível cadastrar o animal.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -124,7 +197,12 @@ const Animais = () => {
       </div>
 
       {/* Lista de Animais */}
-      {animais.length === 0 ? (
+      {loading ? (
+        <div className="bg-card rounded-lg border border-border p-12 shadow-card text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pet-orange mx-auto mb-4"></div>
+          <p className="text-sm text-muted-foreground">Carregando animais...</p>
+        </div>
+      ) : animais.length === 0 ? (
         <div className="bg-card rounded-lg border border-border p-12 shadow-card text-center">
           <Heart className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-card-foreground mb-2">
@@ -173,12 +251,12 @@ const Animais = () => {
                         </div>
                         <div className="flex items-center gap-2 mt-2">
                           <Users className="w-4 h-4 text-blue-vivid" />
-                          <span className="text-sm">Cliente: {animal.cliente}</span>
+                          <span className="text-sm">Cliente: {animal.cliente?.nome}</span>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-muted-foreground">Última consulta</p>
-                        <p className="font-medium">{new Date(animal.ultimaConsulta).toLocaleDateString('pt-BR')}</p>
+                        <p className="font-medium">{animal.updated_at ? new Date(animal.updated_at).toLocaleDateString('pt-BR') : 'Nunca'}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -297,7 +375,7 @@ const Animais = () => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {mockClientes.map((cliente) => (
+                        {clientes.map((cliente) => (
                           <SelectItem key={cliente.id} value={cliente.id.toString()}>
                             {cliente.nome}
                           </SelectItem>
