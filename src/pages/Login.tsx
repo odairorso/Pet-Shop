@@ -66,10 +66,10 @@ const Login = () => {
             />
           </div>
           <CardTitle className="text-2xl font-bold text-pet-blue">
-            {isSignUp ? "Criar Conta" : "Bem-vindo ao Animais & Cia"}
+            {isSignUp ? "🆕 Criar Nova Conta" : "Bem-vindo ao Animais & Cia"}
           </CardTitle>
           <CardDescription>
-            Sistema de gestão para pet shops
+            {isSignUp ? "Preencha os dados para criar sua conta" : "Sistema de gestão para pet shops"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -121,11 +121,11 @@ const Login = () => {
           <div className="text-center">
             <Button
               type="button"
-              variant="link"
+              variant="outline"
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-pet-blue"
+              className="w-full text-pet-blue border-pet-blue hover:bg-pet-blue hover:text-white"
             >
-              {isSignUp ? "Já tem uma conta? Faça login" : "Não tem conta? Cadastre-se"}
+              {isSignUp ? "Já tem uma conta? Faça login" : "🆕 Não tem conta? CADASTRE-SE AQUI"}
             </Button>
           </div>
 
