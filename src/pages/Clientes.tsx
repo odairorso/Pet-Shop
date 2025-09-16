@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { supabase } from "@/lib/supabase";
 import { 
   Users, 
   Plus, 
@@ -26,33 +27,42 @@ const Clientes = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("lista");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [clientes, setClientes] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const handleNovoCliente = () => {
     setIsDialogOpen(true);
   };
 
-  const mockClientes = [
-    {
-      id: 1,
-      nome: "Maria Silva",
-      email: "maria.silva@email.com",
-      telefone: "(11) 99999-9999",
-      endereco: "Rua das Flores, 123",
-      animais: ["Rex", "Luna"],
-      ultimaVisita: "2024-01-15"
-    },
-    {
-      id: 2,
-      nome: "João Santos",
-      email: "joao.santos@email.com",
-      telefone: "(11) 88888-8888",
-      endereco: "Av. Principal, 456",
-      animais: ["Mimi"],
-      ultimaVisita: "2024-01-10"
-    }
-  ];
+  // Função para carregar clientes do Supabase
+  const carregarClientes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-  const [clientes, setClientes] = useState(mockClientes);
+      if (error) {
+        console.error('Erro ao carregar clientes:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os clientes.",
+          variant: "destructive",
+        });
+      } else {
+        setClientes(data || []);
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Carregar clientes ao montar o componente
+  useEffect(() => {
+    carregarClientes();
+  }, []);
 
   const formSchema = z.object({
     nome: z.string().min(2, "Informe o nome"),
@@ -75,26 +85,47 @@ const Clientes = () => {
     },
   });
 
-  const onSubmit = (values: FormValues) => {
-    const novo = {
-      id: Date.now(),
-      nome: values.nome,
-      cpf: values.cpf,
-      email: values.email,
-      telefone: values.telefone,
-      endereco: values.endereco,
-      animais: [],
-      ultimaVisita: new Date().toISOString().slice(0, 10),
-    };
+  const onSubmit = async (values: FormValues) => {
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .insert([
+          {
+            nome: values.nome,
+            cpf: values.cpf,
+            email: values.email,
+            telefone: values.telefone,
+            endereco: values.endereco,
+          }
+        ])
+        .select();
 
-    setClientes((prev) => [novo, ...prev]);
-    setIsDialogOpen(false);
-    form.reset();
+      if (error) {
+        console.error('Erro ao cadastrar cliente:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível cadastrar o cliente. Tente novamente.",
+          variant: "destructive",
+        });
+      } else {
+        // Recarregar a lista de clientes
+        await carregarClientes();
+        setIsDialogOpen(false);
+        form.reset();
 
-    toast({
-      title: "Cliente cadastrado",
-      description: `${values.nome} foi adicionado com sucesso.`,
-    });
+        toast({
+          title: "Cliente cadastrado",
+          description: `${values.nome} foi adicionado com sucesso.`,
+        });
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro inesperado. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -154,39 +185,55 @@ const Clientes = () => {
               </div>
 
               <div className="space-y-4">
-                {clientes.map((cliente) => (
-                  <Card key={cliente.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg">{cliente.nome}</h3>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                            <span className="flex items-center gap-1">
-                              <Mail className="w-4 h-4" />
-                              {cliente.email}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Phone className="w-4 h-4" />
-                              {cliente.telefone}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-4 h-4" />
-                              {cliente.endereco}
-                            </span>
+                {loading ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Carregando clientes...</p>
+                  </div>
+                ) : clientes.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">Nenhum cliente cadastrado ainda.</p>
+                    <p className="text-sm text-muted-foreground">Clique em "Novo Cliente" para começar.</p>
+                  </div>
+                ) : (
+                  clientes.map((cliente) => (
+                    <Card key={cliente.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg">{cliente.nome}</h3>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                              <span className="flex items-center gap-1">
+                                <Mail className="w-4 h-4" />
+                                {cliente.email}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Phone className="w-4 h-4" />
+                                {cliente.telefone}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-4 h-4" />
+                                {cliente.endereco}
+                              </span>
+                            </div>
+                            {cliente.cpf && (
+                              <div className="flex items-center gap-2 mt-2">
+                                <FileText className="w-4 h-4 text-blue-vivid" />
+                                <span className="text-sm">CPF: {cliente.cpf}</span>
+                              </div>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Heart className="w-4 h-4 text-red-vivid" />
-                            <span className="text-sm">Animais: {cliente.animais.join(", ")}</span>
+                          <div className="text-right">
+                            <p className="text-sm text-muted-foreground">Cadastrado em</p>
+                            <p className="font-medium">
+                              {cliente.created_at ? new Date(cliente.created_at).toLocaleDateString('pt-BR') : 'N/A'}
+                            </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Última visita</p>
-                          <p className="font-medium">{new Date(cliente.ultimaVisita).toLocaleDateString('pt-BR')}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation, NavLink } from "react-router-dom";
+import { useLocation, NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -14,6 +14,8 @@ import {
   LogOut,
   User
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 import {
   Sidebar,
@@ -47,6 +49,18 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success("Logout realizado com sucesso!");
+      navigate("/login");
+    } catch (error: any) {
+      toast.error("Erro ao fazer logout");
+    }
+  };
 
   const getNavCls = ({ isActive }: { isActive: boolean }, url: string) => {
     if (isActive) {
@@ -119,11 +133,19 @@ export function AppSidebar() {
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">Usuário do Sistema</p>
-              <p className="text-xs text-muted-foreground truncate">usuario@petshop.com</p>
+              <p className="text-sm font-medium truncate">
+                {user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuário'}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {user?.email || 'usuario@petshop.com'}
+              </p>
             </div>
           )}
-          <button className="p-1 hover:bg-sidebar-accent rounded text-sidebar-foreground">
+          <button 
+            onClick={handleLogout}
+            className="p-1 hover:bg-sidebar-accent rounded text-sidebar-foreground transition-colors"
+            title="Sair do sistema"
+          >
             <LogOut className="w-4 h-4" />
           </button>
         </div>
