@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Heart, Search, Filter, Plus, Users, Calendar, Weight, Stethoscope } from "lucide-react";
+import { Heart, Search, Filter, Plus, Users, Calendar, Weight, Stethoscope, Edit, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface Cliente {
@@ -35,6 +35,8 @@ const Animais = () => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [animais, setAnimais] = useState<Animal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [animalEditando, setAnimalEditando] = useState<Animal | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
   const { toast } = useToast();
 
   const formSchema = z.object({
@@ -112,47 +114,124 @@ const Animais = () => {
   });
 
   const handleNovoAnimal = () => {
+    setIsEditMode(false);
+    setAnimalEditando(null);
+    form.reset();
     setIsDialogOpen(true);
+  };
+
+  // Função para editar animal
+  const editarAnimal = (animal: Animal) => {
+    setAnimalEditando(animal);
+    setIsEditMode(true);
+    form.reset({
+      nome: animal.nome,
+      especie: animal.especie,
+      raca: animal.raca,
+      idade: animal.idade,
+      peso: animal.peso,
+      clienteId: animal.cliente_id.toString(),
+    });
+    setIsDialogOpen(true);
+  };
+
+  // Função para excluir animal
+  const excluirAnimal = async (animalId: number) => {
+    if (!confirm('Tem certeza que deseja excluir este animal?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('animais')
+        .delete()
+        .eq('id', animalId);
+
+      if (error) {
+        console.error('Erro ao excluir animal:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível excluir o animal.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Sucesso",
+          description: "Animal excluído com sucesso!",
+        });
+        await carregarAnimais();
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+      toast({
+        title: "Erro",
+        description: "Erro inesperado ao excluir animal.",
+        variant: "destructive",
+      });
+    }
   };
 
   const onSubmit = async (values: FormValues) => {
     try {
-      const { data, error } = await supabase
-        .from('animais')
-        .insert([
-          {
+      if (isEditMode && animalEditando) {
+        // Atualizar animal existente
+        const { error } = await supabase
+          .from('animais')
+          .update({
             nome: values.nome,
             especie: values.especie,
             raca: values.raca,
             idade: values.idade,
             peso: values.peso,
             cliente_id: parseInt(values.clienteId),
-          }
-        ])
-        .select(`
-          *,
-          cliente:clientes(id, nome)
-        `);
+          })
+          .eq('id', animalEditando.id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // Atualizar a lista de animais
-      if (data && data.length > 0) {
-        setAnimais([data[0], ...animais]);
+        toast({
+          title: "Animal atualizado!",
+          description: `${values.nome} foi atualizado com sucesso.`,
+        });
+      } else {
+        // Criar novo animal
+        const { data, error } = await supabase
+          .from('animais')
+          .insert([
+            {
+              nome: values.nome,
+              especie: values.especie,
+              raca: values.raca,
+              idade: values.idade,
+              peso: values.peso,
+              cliente_id: parseInt(values.clienteId),
+            }
+          ])
+          .select(`
+            *,
+            cliente:clientes(id, nome)
+          `);
+
+        if (error) throw error;
+
+        toast({
+          title: "Animal cadastrado!",
+          description: `${values.nome} foi cadastrado com sucesso.`,
+        });
       }
 
+      // Recarregar lista de animais
+      await carregarAnimais();
+      
       setIsDialogOpen(false);
       form.reset();
-      
-      toast({
-        title: "Animal cadastrado!",
-        description: `${values.nome} foi cadastrado com sucesso.`,
-      });
+      setIsEditMode(false);
+      setAnimalEditando(null);
     } catch (error) {
-      console.error('Erro ao cadastrar animal:', error);
+      console.error('Erro ao salvar animal:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível cadastrar o animal.",
+        description: isEditMode ? "Não foi possível atualizar o animal." : "Não foi possível cadastrar o animal.",
         variant: "destructive",
       });
     }
@@ -254,9 +333,23 @@ const Animais = () => {
                           <span className="text-sm">Cliente: {animal.cliente?.nome}</span>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Última consulta</p>
-                        <p className="font-medium">{animal.updated_at ? new Date(animal.updated_at).toLocaleDateString('pt-BR') : 'Nunca'}</p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => editarAnimal(animal)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => excluirAnimal(animal.id)}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -271,9 +364,9 @@ const Animais = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Novo Animal</DialogTitle>
+            <DialogTitle>{isEditMode ? 'Editar Animal' : 'Novo Animal'}</DialogTitle>
             <DialogDescription>
-              Cadastre um novo animal no sistema
+              {isEditMode ? 'Edite as informações do animal' : 'Cadastre um novo animal no sistema'}
             </DialogDescription>
           </DialogHeader>
           
@@ -392,7 +485,7 @@ const Animais = () => {
                   Cancelar
                 </Button>
                 <Button type="submit" variant="pet-orange">
-                  Cadastrar Animal
+                  {isEditMode ? 'Atualizar Animal' : 'Cadastrar Animal'}
                 </Button>
               </DialogFooter>
             </form>

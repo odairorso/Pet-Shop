@@ -21,13 +21,17 @@ import {
   ArrowDown,
   AlertTriangle,
   DollarSign,
-  FileText
+  FileText,
+  Edit,
+  Trash2
 } from "lucide-react";
 
 const Produtos = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("lista");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [produtoEditando, setProdutoEditando] = useState<any>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const categorias = ["Alimentação", "Higiene", "Brinquedos", "Acessórios", "Medicamentos", "Outros"];
 
@@ -57,7 +61,40 @@ const Produtos = () => {
   });
 
   const handleNovoProduto = () => {
+    setIsEditMode(false);
+    setProdutoEditando(null);
+    form.reset();
     setIsDialogOpen(true);
+  };
+
+  // Função para editar produto
+  const editarProduto = (produto: any) => {
+    setProdutoEditando(produto);
+    setIsEditMode(true);
+    form.reset({
+      nome: produto.nome,
+      codigo: produto.codigo,
+      categoria: produto.categoria,
+      preco: produto.preco.toString(),
+      estoque: produto.estoque.toString(),
+      estoqueMinimo: produto.estoqueMinimo.toString(),
+      descricao: produto.descricao || "",
+    });
+    setIsDialogOpen(true);
+  };
+
+  // Função para excluir produto
+  const excluirProduto = (produtoId: number) => {
+    if (!confirm('Tem certeza que deseja excluir este produto?')) {
+      return;
+    }
+
+    setProdutos(prev => prev.filter(produto => produto.id !== produtoId));
+    
+    toast({
+      title: "Produto excluído",
+      description: "Produto removido do estoque com sucesso!",
+    });
   };
 
   const mockProdutos = [
@@ -84,25 +121,52 @@ const Produtos = () => {
   const [produtos, setProdutos] = useState(mockProdutos);
 
   const onSubmit = (values: FormValues) => {
-    const novoProduto = {
-      id: Date.now(),
-      nome: values.nome,
-      codigo: values.codigo,
-      categoria: values.categoria,
-      preco: parseFloat(values.preco),
-      estoque: parseInt(values.estoque),
-      estoqueMinimo: parseInt(values.estoqueMinimo),
-      descricao: values.descricao || "",
-    };
+    if (isEditMode && produtoEditando) {
+      // Atualizar produto existente
+      const produtoAtualizado = {
+        ...produtoEditando,
+        nome: values.nome,
+        codigo: values.codigo,
+        categoria: values.categoria,
+        preco: parseFloat(values.preco),
+        estoque: parseInt(values.estoque),
+        estoqueMinimo: parseInt(values.estoqueMinimo),
+        descricao: values.descricao || "",
+      };
 
-    setProdutos((prev) => [novoProduto, ...prev]);
+      setProdutos(prev => prev.map(produto => 
+        produto.id === produtoEditando.id ? produtoAtualizado : produto
+      ));
+
+      toast({
+        title: "Produto atualizado",
+        description: `${values.nome} foi atualizado com sucesso.`,
+      });
+    } else {
+      // Criar novo produto
+      const novoProduto = {
+        id: Date.now(),
+        nome: values.nome,
+        codigo: values.codigo,
+        categoria: values.categoria,
+        preco: parseFloat(values.preco),
+        estoque: parseInt(values.estoque),
+        estoqueMinimo: parseInt(values.estoqueMinimo),
+        descricao: values.descricao || "",
+      };
+
+      setProdutos((prev) => [novoProduto, ...prev]);
+
+      toast({
+        title: "Produto cadastrado",
+        description: `${values.nome} foi adicionado ao estoque com sucesso.`,
+      });
+    }
+
     setIsDialogOpen(false);
     form.reset();
-
-    toast({
-      title: "Produto cadastrado",
-      description: `${values.nome} foi adicionado ao estoque com sucesso.`,
-    });
+    setIsEditMode(false);
+    setProdutoEditando(null);
   };
 
   return (
@@ -184,14 +248,36 @@ const Produtos = () => {
                             </span>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Estoque</p>
-                          <p className={`font-medium ${produto.estoque <= produto.estoqueMinimo ? 'text-red-vivid' : 'text-green-vivid'}`}>
-                            {produto.estoque} unidades
-                            {produto.estoque <= produto.estoqueMinimo && (
-                              <AlertTriangle className="w-4 h-4 inline ml-1 text-red-vivid" />
-                            )}
-                          </p>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="text-sm text-muted-foreground">Estoque</p>
+                            <p className={`font-medium ${produto.estoque <= produto.estoqueMinimo ? 'text-red-vivid' : 'text-green-vivid'}`}>
+                              {produto.estoque} unidades
+                              {produto.estoque <= produto.estoqueMinimo && (
+                                <AlertTriangle className="w-4 h-4 inline ml-1 text-red-vivid" />
+                              )}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => editarProduto(produto)}
+                              className="gap-1"
+                            >
+                              <Edit className="w-4 h-4" />
+                              Editar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => excluirProduto(produto.id)}
+                              className="gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Excluir
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
@@ -318,9 +404,9 @@ const Produtos = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Novo Produto</DialogTitle>
+            <DialogTitle>{isEditMode ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
             <DialogDescription>
-              Cadastre um novo produto no estoque
+              {isEditMode ? 'Edite as informações do produto' : 'Cadastre um novo produto no estoque'}
             </DialogDescription>
           </DialogHeader>
           
@@ -462,7 +548,7 @@ const Produtos = () => {
                   Cancelar
                 </Button>
                 <Button type="submit" variant="default" className="bg-gradient-to-r from-orange-vivid to-red-vivid">
-                  Cadastrar Produto
+                  {isEditMode ? 'Atualizar Produto' : 'Cadastrar Produto'}
                 </Button>
               </DialogFooter>
             </form>

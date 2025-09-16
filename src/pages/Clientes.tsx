@@ -20,7 +20,10 @@ import {
   MapPin,
   Heart,
   Calendar,
-  FileText
+  FileText,
+  Edit,
+  Trash2,
+  MoreVertical
 } from "lucide-react";
 
 const Clientes = () => {
@@ -29,8 +32,13 @@ const Clientes = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [clienteEditando, setClienteEditando] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const handleNovoCliente = () => {
+    setIsEditMode(false);
+    setClienteEditando(null);
+    form.reset();
     setIsDialogOpen(true);
   };
 
@@ -64,6 +72,56 @@ const Clientes = () => {
     carregarClientes();
   }, []);
 
+  // Função para editar cliente
+  const editarCliente = (cliente) => {
+    setClienteEditando(cliente);
+    setIsEditMode(true);
+    form.reset({
+      nome: cliente.nome,
+      cpf: cliente.cpf,
+      email: cliente.email,
+      telefone: cliente.telefone,
+      endereco: cliente.endereco,
+    });
+    setIsDialogOpen(true);
+  };
+
+  // Função para excluir cliente
+  const excluirCliente = async (clienteId) => {
+    if (!confirm('Tem certeza que deseja excluir este cliente?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('clientes')
+        .delete()
+        .eq('id', clienteId);
+
+      if (error) {
+        console.error('Erro ao excluir cliente:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível excluir o cliente.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Sucesso",
+          description: "Cliente excluído com sucesso!",
+        });
+        await carregarClientes();
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+      toast({
+        title: "Erro",
+        description: "Erro inesperado ao excluir cliente.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const formSchema = z.object({
     nome: z.string().min(2, "Informe o nome"),
     cpf: z.string().min(11, "CPF inválido").max(14, "CPF inválido"),
@@ -87,36 +145,68 @@ const Clientes = () => {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      const { data, error } = await supabase
-        .from('clientes')
-        .insert([
-          {
+      if (isEditMode && clienteEditando) {
+        // Atualizar cliente existente
+        const { error } = await supabase
+          .from('clientes')
+          .update({
             nome: values.nome,
             cpf: values.cpf,
             email: values.email,
             telefone: values.telefone,
             endereco: values.endereco,
-          }
-        ])
-        .select();
+          })
+          .eq('id', clienteEditando.id);
 
-      if (error) {
-        console.error('Erro ao cadastrar cliente:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível cadastrar o cliente. Tente novamente.",
-          variant: "destructive",
-        });
+        if (error) {
+          console.error('Erro ao atualizar cliente:', error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível atualizar o cliente. Tente novamente.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Cliente atualizado",
+            description: `${values.nome} foi atualizado com sucesso.`,
+          });
+          await carregarClientes();
+          setIsDialogOpen(false);
+          setIsEditMode(false);
+          setClienteEditando(null);
+          form.reset();
+        }
       } else {
-        // Recarregar a lista de clientes
-        await carregarClientes();
-        setIsDialogOpen(false);
-        form.reset();
+        // Criar novo cliente
+        const { data, error } = await supabase
+          .from('clientes')
+          .insert([
+            {
+              nome: values.nome,
+              cpf: values.cpf,
+              email: values.email,
+              telefone: values.telefone,
+              endereco: values.endereco,
+            }
+          ])
+          .select();
 
-        toast({
-          title: "Cliente cadastrado",
-          description: `${values.nome} foi adicionado com sucesso.`,
-        });
+        if (error) {
+          console.error('Erro ao cadastrar cliente:', error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível cadastrar o cliente. Tente novamente.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Cliente cadastrado",
+            description: `${values.nome} foi adicionado com sucesso.`,
+          });
+          await carregarClientes();
+          setIsDialogOpen(false);
+          form.reset();
+        }
       }
     } catch (error) {
       console.error('Erro:', error);
@@ -223,11 +313,31 @@ const Clientes = () => {
                               </div>
                             )}
                           </div>
-                          <div className="text-right">
-                            <p className="text-sm text-muted-foreground">Cadastrado em</p>
-                            <p className="font-medium">
-                              {cliente.created_at ? new Date(cliente.created_at).toLocaleDateString('pt-BR') : 'N/A'}
-                            </p>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <p className="text-sm text-muted-foreground">Cadastrado em</p>
+                              <p className="font-medium">
+                                {cliente.created_at ? new Date(cliente.created_at).toLocaleDateString('pt-BR') : 'N/A'}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => editarCliente(cliente)}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => excluirCliente(cliente.id)}
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </CardContent>
@@ -323,9 +433,9 @@ const Clientes = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Novo Cliente</DialogTitle>
+            <DialogTitle>{isEditMode ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
             <DialogDescription>
-              Cadastre um novo cliente no sistema
+              {isEditMode ? 'Edite as informações do cliente' : 'Cadastre um novo cliente no sistema'}
             </DialogDescription>
           </DialogHeader>
           
@@ -406,7 +516,7 @@ const Clientes = () => {
                   Cancelar
                 </Button>
                 <Button type="submit" variant="pet-blue">
-                  Cadastrar Cliente
+                  {isEditMode ? 'Atualizar Cliente' : 'Cadastrar Cliente'}
                 </Button>
               </DialogFooter>
             </form>
