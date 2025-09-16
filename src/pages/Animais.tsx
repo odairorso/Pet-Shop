@@ -13,18 +13,18 @@ import { Heart, Search, Filter, Plus, Users, Calendar, Weight, Stethoscope, Edit
 import { supabase } from "@/lib/supabase";
 
 interface Cliente {
-  id: number;
+  id: string;
   nome: string;
 }
 
 interface Animal {
-  id: number;
+  id: string;
   nome: string;
   especie: string;
   raca: string;
-  idade: string;
-  peso: string;
-  cliente_id: number;
+  idade: number;
+  peso: number;
+  cliente_id: string;
   cliente?: Cliente;
   created_at?: string;
   updated_at?: string;
@@ -123,15 +123,15 @@ const Animais = () => {
   // Função para editar animal
   const editarAnimal = (animal: Animal) => {
     setAnimalEditando(animal);
-    setIsEditMode(true);
     form.reset({
       nome: animal.nome,
       especie: animal.especie,
       raca: animal.raca,
-      idade: animal.idade,
-      peso: animal.peso,
-      clienteId: animal.cliente_id.toString(),
+      idade: animal.idade.toString(),
+      peso: animal.peso.toString(),
+      clienteId: animal.cliente_id,
     });
+    setIsEditMode(true);
     setIsDialogOpen(true);
   };
 
@@ -181,9 +181,9 @@ const Animais = () => {
             nome: values.nome,
             especie: values.especie,
             raca: values.raca,
-            idade: values.idade,
-            peso: values.peso,
-            cliente_id: parseInt(values.clienteId),
+            idade: parseInt(values.idade),
+            peso: parseFloat(values.peso),
+            cliente_id: values.clienteId,
           })
           .eq('id', animalEditando.id);
 
@@ -202,9 +202,9 @@ const Animais = () => {
               nome: values.nome,
               especie: values.especie,
               raca: values.raca,
-              idade: values.idade,
-              peso: values.peso,
-              cliente_id: parseInt(values.clienteId),
+              idade: parseInt(values.idade),
+              peso: parseFloat(values.peso),
+              cliente_id: values.clienteId,
             }
           ])
           .select(`
